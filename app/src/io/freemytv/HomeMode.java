@@ -55,7 +55,7 @@ final class HomeMode {
      * Turned off in Free My TV mode, when the TV has them. Google extras first, then TV-maker extras (TCL here; add
      * your brand's, see the README). The TV's own home screen and screensaver are added at switch time.
      */
-    static final String[] DEBLOAT = {
+    private static final String[] BUILT_IN_DEBLOAT = {
         "com.google.android.play.games", "com.google.android.youtube.tvmusic",        // Play Games, YouTube Music
         // TCL
         "com.tcl.magiconnectfree", "com.tcl.miracast",                                // screen mirroring apps
@@ -82,6 +82,9 @@ final class HomeMode {
         "com.hotack.screensaversdk",                                                  // screensaver SDK (likely ads)
         "com.htc.eventuploadservice", "com.htc.hyk_test",                             // event upload (telemetry), factory test app
     };
+
+    /** The list above plus debloat_apps from config.properties. */
+    static final String[] DEBLOAT = withConfig(BUILT_IN_DEBLOAT, Config.DEBLOAT_APPS);
 
     /** The voice assistant, only with disable_assistant=true in config.properties (the mic button stops working). */
     static final String[] ASSISTANT = {"com.google.android.katniss", "com.android.hotwordenrollment.okgoogle"};
@@ -143,6 +146,25 @@ final class HomeMode {
         // stays on as a second home screen (ours is set as the default); remote pairing, OTA updates, setup, SDK services
         "com.htc.luminaos", "com.htc.expandsdk", "com.htc.htcbluetoothremotecontrol", "com.htc.htcotaupdate",
         "com.softwinner.provision", "com.softwinner.settingssetup"));
+
+    static {
+        // From config.properties: protect_apps, and the app behind the Projector button (it holds the projector's controls).
+        PROTECTED.addAll(packages(Config.PROTECT_APPS));
+        if (HomeApps.PROJECTOR_UI != null) PROTECTED.add(HomeApps.PROJECTOR_UI.getPackageName());
+    }
+
+    /** Package names from a config.properties list (separated by commas or spaces). */
+    static List<String> packages(String list) {
+        List<String> out = new ArrayList<>();
+        for (String s : list.split("[,\\s]+")) if (!s.isEmpty()) out.add(s);
+        return out;
+    }
+
+    private static String[] withConfig(String[] base, String extra) {
+        List<String> all = new ArrayList<>(Arrays.asList(base));
+        for (String pkg : packages(extra)) if (!all.contains(pkg)) all.add(pkg);
+        return all.toArray(new String[0]);
+    }
 
     /** One switch at a time (jobs can overlap: a boot check and a button press). */
     private static final Object RUN = new Object();

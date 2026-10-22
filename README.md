@@ -8,7 +8,7 @@
 
 Ad-free home screen, projector controls one press away, wallpapers behind a glass shelf, tuned for a 1 GB Android 11 projector.
 
-[Enhancements](#enhancements-in-this-fork) · [Measured](#measured-on-the-projector) · [Build and install](#build-and-install) · [Going back](#going-back) · [Original project](#the-original-free-my-tv)
+[Enhancements](#enhancements-in-this-fork) · [Measured](#measured-on-the-projector) · [Build and install](#build-and-install) · [Use it on your projector](#use-it-on-your-projector) · [Going back](#going-back) · [Original project](#the-original-free-my-tv)
 
 <img src="docs/assets/toptro-tp2-home.jpg" width="880" alt="Free My TV on the Toptro TP2: a mountain wallpaper behind the clock, the weather and a glass shelf with YouTube, Prime Video, Disney+ and Hulu">
 
@@ -32,6 +32,8 @@ Toptro TP2: Allwinner H713, Android 11, 32-bit ARM userland (armeabi-v7a), 1 GB 
 - **No crash on Android Settings.** This projector's Settings doesn't answer `android.settings.SETTINGS`, so the original crashed when opening it. The app now falls back to `com.android.settings/.Settings`, from both the home screen and Free My TV's settings.
 - **Glass on Android 9 to 12.** The original's Liquid Glass needs AGSL shaders (Android 13+); older devices got flat fills. Here the glass is a tint, a sheen over the top half and a rim lit from the top left and bottom right, drawn with gradients made once and placed with a matrix: no allocation per frame. Android 13+ still gets the full Liquid Glass.
 - **Wallpapers.** With no trending picks (no TMDB key), the home screen shows one of five photos from [`app/assets/wallpapers`](app/assets/wallpapers) instead of a plain gradient: a different one each day, with the night look (white text, smoked glass) so it stays readable. Each is pre-cropped to the screen's 1280×720 (~190 KB) and decoded at 16 bits per pixel (1.8 MB) off the main thread.
+
+- **Configurable for other projectors.** Three new settings in `config.properties`: `projector_app` (what the Projector button opens), `protect_apps` and `debloat_apps`. Two helper scripts: [`tools/inspect-projector.sh`](tools/inspect-projector.sh) reads a projector over adb and suggests those values; [`tools/wallpapers.sh`](tools/wallpapers.sh) turns your photos into wallpapers. See [Use it on your projector](#use-it-on-your-projector).
 
 ### On the projector (setup, not code)
 
@@ -68,6 +70,53 @@ Use build-tools 36 or newer: the `d8` in build-tools 34 crashes on recent JDKs (
 On the projector, open *Free My TV* → *Home Screen* → *Free My TV* and accept the debugging prompt with *Always allow* ticked. Know how to reach keystone and focus first (the Projector button).
 
 Keep `freemytv.keystore` (not in git, created on the first build): updates must be signed with the same key, or Android refuses to install them over the app.
+
+## Use it on your projector
+
+The app works on any Android projector or TV with Android 9 or newer (32- or 64-bit). The Toptro TP2 settings are the defaults; many Allwinner H713 projectors with the same "luminaos" firmware match them as they are. For anything else, spend ten minutes on steps 2 and 3 **before** switching: if the stock home screen holds keystone and focus and isn't protected, switching turns it off and those controls are hard to reach until you choose *Original*.
+
+1. **Turn on debugging** on the projector (Settings → About → press the build number 7 times; then Developer options → USB debugging, or network debugging) and note its IP address.
+2. **Inspect it** (changes nothing):
+   ```bash
+   tools/inspect-projector.sh 192.168.1.50
+   ```
+   It prints the device, its stock home screen, the vendor apps grouped into *probably keep* and *possible bloat*, and suggested `config.properties` lines.
+3. **Set `config.properties`** (`./build.sh` creates it the first time). Review the suggestions; when unsure about an app, protect it rather than turn it off.
+4. **Wallpapers (optional):** `tools/wallpapers.sh ~/Pictures/*.jpg` replaces the five in `app/assets/wallpapers`.
+5. **Build and install** ([above](#build-and-install)), then switch: *Free My TV* → *Home Screen* → *Free My TV*. Check that the Projector button opens keystone and focus.
+
+### Settings for projectors
+
+All in `config.properties`, applied by `./build.sh` (rebuild and reinstall after a change). The rest of the settings (TMDB key, city, language...) are [the original ones](#settings).
+
+| Setting | What it does | Default |
+|---|---|---|
+| `projector_app` | The app the Projector button opens, as `package/activity` (usually the stock home screen). Never turned off. `none` shows the Live TV button instead. | `com.htc.luminaos/com.htc.luminaos.activity.MainActivity` |
+| `protect_apps` | Extra apps never to turn off, separated by commas: projector controls, remote pairing, updates, setup. | empty |
+| `debloat_apps` | Extra apps to turn off in Free My TV mode, separated by commas: ads, telemetry, demos. | empty |
+
+If an app is on both lists, it stays on. The built-in lists (for TCL, Sony, Xiaomi projectors, the Toptro TP2 and others) are in [`HomeMode.java`](app/src/io/freemytv/HomeMode.java) (`BUILT_IN_DEBLOAT`, `PROTECTED`).
+
+### Other customizations
+
+| What | Where |
+|---|---|
+| Wallpapers (shown when there are no trending picks; one per day) | `tools/wallpapers.sh` → `app/assets/wallpapers` (1280×720 by default; `--size 1920x1080` for 1080p screens, which uses 4 MB instead of 1.8 MB) |
+| Apps on the shelf and their order | On the projector: Settings (gear) → Shelf. Default list: `SHELF` in [`HomeApps.java`](app/src/io/freemytv/HomeApps.java) |
+| City, temperature unit, language, crypto prices | On the projector in Free My TV's settings, or `config.properties` |
+| Trending picks and the photo screensaver | A free TMDB key in `config.properties` ([how](#the-tmdb-key)) |
+
+### What gets saved, and where
+
+| Where | What | In git? |
+|---|---|---|
+| Your computer: `config.properties` | Your settings: TMDB and Watchmode keys, city coordinates, projector lists | No (private) |
+| Your computer: `freemytv.keystore` | The key that signs the APK. **Back it up**: updates must be signed with it, or Android won't install them over the app | No (private) |
+| Your computer: `FreeMyTV.apk`, `out/` | The build. The APK contains your TMDB key, so don't share it publicly | No |
+| The projector: the app's own storage | Settings changed on the projector (shelf, city, theme), the list of apps it turned off (so *Original* can turn exactly those back on), downloaded pick images | Removed with the app |
+| The projector: system | The home screen and screensaver choice, and apps turned off with `pm disable-user` (not uninstalled; their data stays) | n/a |
+
+Nothing is uninstalled and nothing is sent to the developer: the app only talks to Open-Meteo (weather), Binance (prices, if on), TMDB (picks, if a key is set), Watchmode (if a key is set) and the projector's own adb (to switch). See [Privacy](#privacy).
 
 ## Going back
 

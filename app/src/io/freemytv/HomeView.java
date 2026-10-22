@@ -471,7 +471,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** The three corner buttons, with their names in the current language. */
     private void makeLightButtons() {
         lightButtons.clear();
-        if (getContext().getPackageManager().resolveActivity(new Intent().setComponent(HomeApps.PROJECTOR_UI), 0) != null) {
+        if (HomeApps.PROJECTOR_UI != null
+                && getContext().getPackageManager().resolveActivity(new Intent().setComponent(HomeApps.PROJECTOR_UI), 0) != null) {
             lightButtons.add(HomeApps.action(HomeApps.PROJECTOR, "projector", Ui.tr("Projetor", "Projector"), "tv_settings"));
         } else {
             lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "live", Ui.tr("TV aberta", "Live TV"), "live_tv"));

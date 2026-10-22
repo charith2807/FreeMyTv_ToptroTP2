@@ -57,9 +57,9 @@ final class HomeApps {
     static final int APP = 0, LIVE_TV = 1, INPUT = 2, ALL_APPS = 3, SETTINGS = 4, ANDROID_SETTINGS = 5;
     /** The "HDMI Inputs" button: opens the bottom drawer on the inputs (the home screen handles it). */
     static final int INPUTS = 7;
-    /** Projectors: the stock launcher, which holds keystone, focus and the picture settings (Toptro TP2). */
+    /** Projectors: the app with keystone, focus and the picture settings (projector_app in config.properties), or null. */
     static final int PROJECTOR = 8;
-    static final ComponentName PROJECTOR_UI = new ComponentName("com.htc.luminaos", "com.htc.luminaos.activity.MainActivity");
+    static final ComponentName PROJECTOR_UI = ComponentName.unflattenFromString(Config.PROJECTOR_APP);
     /** Some projectors ship phone-style Settings that doesn't answer android.settings.SETTINGS. */
     static final Intent PHONE_SETTINGS = new Intent().setComponent(new ComponentName("com.android.settings", "com.android.settings.Settings"));
     /** Image size of each card (16:9; on screen it shows up to ~330 px wide). */

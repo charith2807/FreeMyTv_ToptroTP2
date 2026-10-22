@@ -62,6 +62,9 @@ final class Config {
     static final boolean DISABLE_ASSISTANT = $ASSIST;
     static final boolean SHOW_CRYPTO = $CRYPTO;
     static final boolean HIDE_ANIMATION = $ANIMATION;
+    static final String PROJECTOR_APP = "$(prop projector_app com.htc.luminaos/com.htc.luminaos.activity.MainActivity)";
+    static final String PROTECT_APPS = "$(prop protect_apps '')";
+    static final String DEBLOAT_APPS = "$(prop debloat_apps '')";
 }
 EOF
 
