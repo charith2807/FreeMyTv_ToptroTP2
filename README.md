@@ -2,53 +2,82 @@
 
 <img src="docs/assets/icon-512.png" width="96" alt="">
 
-# Free My TV
+# Free My TV: Toptro TP2 Projector Edition
 
-**A fast, ad-free home screen for Google TV, LG and Samsung TVs.**
+**A fork of [Free My TV](https://github.com/simbasjungles/free-my-tv), made specifically for the Toptro TP2 projector.**
 
-Trending picks from your own apps, the weather at a glance, and a look that follows the sunset.<br>
-Open source. Built with Claude Code. One button to undo.
+Ad-free home screen, projector controls one press away, wallpapers behind a glass shelf, tuned for a 1 GB Android 11 projector.
 
-[**freemytv.io**](https://freemytv.io) · [Install](#install) · [LG TVs](#lg-tvs-webos) · [Samsung TVs](#samsung-tvs-tizen) · [Any TV](#any-tv) · [Make it yours](#make-it-yours)
+[Enhancements](#enhancements-in-this-fork) · [Measured](#measured-on-the-projector) · [Build and install](#build-and-install) · [Going back](#going-back) · [Original project](#the-original-free-my-tv)
 
-<img src=".github/preview.webp" width="880" alt="The Free My TV home screen: a glass shelf of apps, trending picks, and a drawer with the weather and crypto prices">
+<img src="docs/assets/toptro-tp2-home.jpg" width="880" alt="Free My TV on the Toptro TP2: a mountain wallpaper behind the clock, the weather and a glass shelf with YouTube, Prime Video, Disney+ and Hulu">
+
+<sub>On the projector: today's wallpaper, the night look and the glass shelf. Top right: Projector, HDMI Inputs, Settings.</sub>
 
 </div>
 
-## This fork: Toptro TP2 projector
+> **This is a fork.** The original app, its design and nearly all of its code are by [simbasjungles](https://github.com/simbasjungles/free-my-tv). This fork only adapts it to one projector. For a TV, use the original.
 
-A private copy of [simbasjungles/free-my-tv](https://github.com/simbasjungles/free-my-tv), adapted for the Toptro TP2 projector (Allwinner H713, Android 11, 32-bit ARM, 1 GB RAM, 1280×720 UI, stock "luminaos" launcher). Everything below the original project's sections still applies; this is what's different.
+## The projector
 
-<p align="center"><img src="docs/assets/toptro-tp2-home.jpg" width="880" alt="Free My TV on the Toptro TP2: a mountain wallpaper behind the clock, the weather and a glass shelf with YouTube, Prime Video, Disney+ and Hulu"><br><sub>On the projector: today's wallpaper, the night look and the glass shelf. Top right: Projector, HDMI Inputs, Settings.</sub></p>
+Toptro TP2: Allwinner H713, Android 11, 32-bit ARM userland (armeabi-v7a), 1 GB RAM, 1280×720 UI, stock launcher `com.htc.luminaos`, autofocus service `com.hysd.vafocus`, phone-style Android Settings. Its build reports itself as an `ADT_3`.
 
-**Changes** (branch `toptro-tp2`):
+## Enhancements in this fork
 
-- **Projector controls stay safe.** `com.htc.luminaos` (the stock launcher, which opens keystone, focus and picture settings), the remote pairing, OTA updates and setup apps are on the `PROTECTED` list in [`HomeMode.java`](app/src/io/freemytv/HomeMode.java), so the switch never turns them off. Autofocus runs as its own service (`com.hysd.vafocus`) and isn't on any list.
-- **Debloat:** `com.hotack.screensaversdk` (screensaver SDK, likely ads), `com.htc.eventuploadservice` (telemetry) and `com.htc.hyk_test` (factory test app). *Original* turns them back on.
-- **Projector button.** The first corner button opens the stock launcher (keystone, focus, settings) instead of Live TV, which a projector doesn't have. It appears only when `com.htc.luminaos` is installed.
-- **Android Settings fallback.** This projector's phone-style Settings doesn't answer `android.settings.SETTINGS`; the app now opens `com.android.settings/.Settings` instead of crashing.
-- **Glass on Android 9 to 12.** Without AGSL shaders, the glass is a tint, a sheen over the top half and a rim lit from the top left, all drawn with gradients made once (no allocation per frame). The full Liquid Glass still runs on Android 13+.
-- **Wallpapers.** With no trending picks (no TMDB key), the home screen shows one of five photos from [`app/assets/wallpapers`](app/assets/wallpapers) (1280×720, a different one each day) with the night look, instead of a plain gradient. Decoded at 16 bits per pixel (1.8 MB).
+### In the app
 
-**Measured on the projector** (24 remote presses across the shelf, the corner buttons and the drawer; 3 alternating runs each, `dumpsys gfxinfo`):
+- **Projector controls stay safe.** The stock launcher `com.htc.luminaos` (which opens keystone, focus and picture settings), remote pairing (`com.htc.htcbluetoothremotecontrol`), OTA updates (`com.htc.htcotaupdate`), `com.htc.expandsdk` and the Allwinner setup apps are on the `PROTECTED` list in [`HomeMode.java`](app/src/io/freemytv/HomeMode.java). The switch never turns them off; the stock launcher stays installed as a second home screen. Autofocus (`com.hysd.vafocus`) isn't on any list.
+- **Projector debloat.** `com.hotack.screensaversdk` (screensaver SDK, likely ads), `com.htc.eventuploadservice` (telemetry) and `com.htc.hyk_test` (factory test app) are turned off in Free My TV mode. *Original* turns them back on.
+- **Projector button.** The first corner button opens the stock launcher (keystone, focus, settings, ScreenCast, HDMI) instead of Live TV, which a projector doesn't have. It appears only when `com.htc.luminaos` is installed, so other devices keep Live TV.
+- **No crash on Android Settings.** This projector's Settings doesn't answer `android.settings.SETTINGS`, so the original crashed when opening it. The app now falls back to `com.android.settings/.Settings`, from both the home screen and Free My TV's settings.
+- **Glass on Android 9 to 12.** The original's Liquid Glass needs AGSL shaders (Android 13+); older devices got flat fills. Here the glass is a tint, a sheen over the top half and a rim lit from the top left and bottom right, drawn with gradients made once and placed with a matrix: no allocation per frame. Android 13+ still gets the full Liquid Glass.
+- **Wallpapers.** With no trending picks (no TMDB key), the home screen shows one of five photos from [`app/assets/wallpapers`](app/assets/wallpapers) instead of a plain gradient: a different one each day, with the night look (white text, smoked glass) so it stays readable. Each is pre-cropped to the screen's 1280×720 (~190 KB) and decoded at 16 bits per pixel (1.8 MB) off the main thread.
+
+### On the projector (setup, not code)
+
+- Time zone fixed: automatic time zone had picked `America/Costa_Rica`, an hour off; set to the local zone with automatic detection off.
+- Hulu reinstalled from Google Play (newer than the store copy). Disney+ from the projector's own store, since Play lists the current version as incompatible; its Google Play source stamp verifies, so it's the unmodified app.
+- VLC 3.7.1, the official 32-bit (`armeabi-v7a`) build from VideoLAN, SHA-256 checked against VideoLAN's published sum.
+
+## Measured on the projector
+
+24 remote presses across the shelf, the corner buttons and the drawer; one warm-up run, then 3 alternating runs of each build (`dumpsys gfxinfo`, `dumpsys meminfo`). No crashes in any run.
 
 | | Janky frames | Median frame | 99th percentile | Memory (PSS) |
 |---|---|---|---|---|
-| Upstream | avg 44% | 13–16 ms | 46–73 ms | 53 MB |
+| Original | avg 44% | 13–16 ms | 46–73 ms | 53 MB |
 | This fork | avg 44% | 13–15 ms | 42–53 ms | 60 MB |
 
-The glass and wallpaper cost nothing measurable in smoothness; the extra memory is the wallpaper. The ~44% janky frames are the projector's chip, on both versions.
+The glass and wallpaper cost nothing measurable in smoothness, and the worst frames got shorter; the extra memory is the wallpaper (in RAM and as a GPU texture). The ~44% janky frames come from the projector's chip, on both builds. A first glass version that redrew the photo inside every pane measured worse (avg 48% janky, +4 MB) and was dropped.
 
-**Building on a Mac with a recent JDK:** the `d8` in build-tools 34 crashes on Java 27 (`NullPointerException` in R8). Install a newer one and `build.sh` picks it up automatically:
+## Build and install
+
+Needs a JDK (17+), the Android SDK command-line tools and adb. On a Mac:
 
 ```bash
-sdkmanager "build-tools;36.0.0"
+brew install --cask temurin android-commandlinetools android-platform-tools
+sdkmanager "build-tools;36.0.0" "platforms;android-34"
+./build.sh            # the first run creates config.properties: set your city (and a TMDB key, optional)
 ./build.sh
-adb connect 192.168.1.150:5555
+adb connect <projector-ip>:5555
 adb install -r FreeMyTV.apk
 ```
 
-Keep `freemytv.keystore` (not in git): updates must be signed with the same key, or Android refuses to install them over the existing app.
+Use build-tools 36 or newer: the `d8` in build-tools 34 crashes on recent JDKs (Java 27: `NullPointerException` in R8). `build.sh` picks the newest installed.
+
+On the projector, open *Free My TV* → *Home Screen* → *Free My TV* and accept the debugging prompt with *Always allow* ticked. Know how to reach keystone and focus first (the Projector button).
+
+Keep `freemytv.keystore` (not in git, created on the first build): updates must be signed with the same key, or Android refuses to install them over the app.
+
+## Going back
+
+*Free My TV* → *Home Screen* → *Original* restores the stock launcher, its screensaver and every app that was turned off. If the home screen crashes 3 times in 5 minutes, the app does this by itself. From a computer: `adb shell cmd package set-home-activity com.htc.luminaos/.activity.MainActivity`.
+
+---
+
+# The original Free My TV
+
+Everything below is the original project's README. It describes the app on Google TV, LG and Samsung TVs and still applies here.
 
 ## What you get
 
