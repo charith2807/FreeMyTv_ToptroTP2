@@ -3,6 +3,7 @@ package io.freemytv;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
@@ -139,6 +140,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int tab, topIndex, cardIndex;
     private int widgetIndex;    // with TalkBack on, the drawer's weather (0) or quotes (1) card can take the focus
     private List<Recs.Pick> cards = new ArrayList<>();
+    private Bitmap wallpaper;           // the background while there are no picks (assets/wallpapers), or null
     private final Spring[] topFocus = new Spring[6];
     private final RectF[] topRects = new RectF[6];
     private final Spring[] cardFocus = new Spring[3];
@@ -385,6 +387,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         makeLightButtons();
         recs.setLight(true);
         checkNight(false);
+        loadWallpaper();
         sheetLayer.setVisibility(INVISIBLE);
         scene.setMotion(0.6f, 0f);
         updatePalette();
@@ -468,7 +471,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     /** The three corner buttons, with their names in the current language. */
     private void makeLightButtons() {
         lightButtons.clear();
-        lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "live", Ui.tr("TV aberta", "Live TV"), "live_tv"));
+        if (getContext().getPackageManager().resolveActivity(new Intent().setComponent(HomeApps.PROJECTOR_UI), 0) != null) {
+            lightButtons.add(HomeApps.action(HomeApps.PROJECTOR, "projector", Ui.tr("Projetor", "Projector"), "tv_settings"));
+        } else {
+            lightButtons.add(HomeApps.action(HomeApps.LIVE_TV, "live", Ui.tr("TV aberta", "Live TV"), "live_tv"));
+        }
         lightButtons.add(HomeApps.action(HomeApps.INPUTS, "inputs", Ui.tr("Entradas HDMI", "HDMI Inputs"), "hdmi"));
         lightButtons.add(HomeApps.action(HomeApps.SETTINGS, "settings", Ui.tr("Configurações", "Settings"), "settings"));
     }
@@ -867,7 +874,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     /** Day or night right now (from the sun at your location); `animate`: with the transition. */
     private void checkNight(boolean animate) {
-        boolean want = data.isNight(System.currentTimeMillis());
+        boolean want = showsWallpaper() || data.isNight(System.currentTimeMillis());
         if (want == nightTarget) return;
         nightTarget = want;
         if (animate && running) {
@@ -998,6 +1005,39 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void drawSky(Canvas c) {
         drawLightSky(c);
+    }
+
+    /** The wallpapers are photos (mostly dark): while one shows, the home screen uses the night look. */
+    private boolean showsWallpaper() {
+        return wallpaper != null && cards.isEmpty();
+    }
+
+    /** One of assets/wallpapers, a different one each day, decoded at 16 bits per pixel (1.8 MB at 1280×720). */
+    private void loadWallpaper() {
+        final Context c = getContext().getApplicationContext();
+        LOADER.execute(() -> {
+            try {
+                String[] names = c.getAssets().list("wallpapers");
+                if (names == null || names.length == 0) return;
+                java.util.Arrays.sort(names);
+                String name = names[(int) (System.currentTimeMillis() / 86_400_000L % names.length)];
+                android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+                o.inPreferredConfig = Bitmap.Config.RGB_565;
+                final Bitmap b;
+                try (java.io.InputStream in = c.getAssets().open("wallpapers/" + name)) {
+                    b = android.graphics.BitmapFactory.decodeStream(in, null, o);
+                }
+                if (b == null) return;
+                handler.post(() -> {
+                    wallpaper = b;
+                    checkNight(running);
+                    heroDirty = true;
+                    heroLayer.invalidate();
+                });
+            } catch (java.io.IOException e) {
+                AppLog.w("wallpaper: " + e.getMessage());
+            }
+        });
     }
 
     /** Blends a color on top (the drawer's veil) as part of drawing the image, without another layer. */
@@ -2619,7 +2659,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void updateCards() {
         List<Recs.Pick> list = recs.now(TAB_KIND[tab]);
         if (!samePicks(list, cards)) {
+            boolean wasEmpty = cards.isEmpty();
             cards = list;
+            if (wasEmpty != list.isEmpty()) checkNight(running);
             cardIndex = Math.min(cardIndex, Math.max(0, list.size() - 1));
             if (zone == Z_CARDS && list.isEmpty()) {
                 zone = Z_SHELF;
@@ -2650,7 +2692,15 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         boolean fading = bgFadeAt != 0;
         // Drawer open: the background lightens (by day) or darkens (at night), as a filter on the drawing itself.
         android.graphics.ColorFilter v = veil(tone(0.32f, 0.42f) * Ui.clamp(drawer.value), blend(0xFFFFFFFF, 0xFF000000, night));
-        if (bgTo == null || (fading && bgFrom == null)) {
+        if ((bgTo == null || (fading && bgFrom == null)) && wallpaper != null) {
+            imagePaint.setColorFilter(v);
+            drawImage(c, wallpaper, 1);
+            imagePaint.setColorFilter(null);
+            fill.setShader(null);
+            fill.setColorFilter(null);
+            fill.setColor(0x2E000000);    // white text stays readable on bright parts of the photo
+            c.drawRect(screen, fill);
+        } else if (bgTo == null || (fading && bgFrom == null)) {
             if (lightGradient == null) lightGradient = new LinearGradient(0, 0, 0, h, 0xFFF5F5F7, 0xFFE2E2E7, Shader.TileMode.CLAMP);
             if (nightGradient == null) nightGradient = new LinearGradient(0, 0, 0, h, 0xFF1C1C1E, 0xFF0B0B0D, Shader.TileMode.CLAMP);
             fill.setColorFilter(v);

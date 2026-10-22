@@ -1019,7 +1019,15 @@ public class SettingsActivity extends Activity {
                 screen = REMOTE_KEYS;
                 focus = 0;
             } else {
-                activity.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                try {
+                    activity.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (android.content.ActivityNotFoundException e) {
+                    try {
+                        activity.startActivity(new Intent(HomeApps.PHONE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    } catch (RuntimeException e2) {
+                        AppLog.w("no Android settings screen: " + e2.getMessage());
+                    }
+                }
             }
             for (Spring s : pop) s.snap(0);
             invalidate();

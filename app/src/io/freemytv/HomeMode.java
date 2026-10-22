@@ -78,6 +78,9 @@ final class HomeMode {
         // KTC (NextStar; MediaTek)
         "tv.anoki.acr.controller",                                                    // Anoki ACR: watches what's on screen
         "com.mediatek.tv.retaildemo", "com.electronic.manual",                        // store demo, manual
+        // Toptro TP2 projector (Allwinner H713, "luminaos" UI)
+        "com.hotack.screensaversdk",                                                  // screensaver SDK (likely ads)
+        "com.htc.eventuploadservice", "com.htc.hyk_test",                             // event upload (telemetry), factory test app
     };
 
     /** The voice assistant, only with disable_assistant=true in config.properties (the mic button stops working). */
@@ -135,7 +138,11 @@ final class HomeMode {
         "com.fengmi.projector.imaging", "com.fengmi.platform", "com.fengmi.Autopair", "com.fengmi.fmsettings",
         "com.fengmi.testsuite", "android.autoinstalls.config.fomovie",
         "uk.co.freeview.tifbridge",
-        "uk.co.freeview.mdsclient", "uk.co.freeview.fvpconfigauth"));
+        "uk.co.freeview.mdsclient", "uk.co.freeview.fvpconfigauth",
+        // Toptro TP2 projector (Allwinner H713): the stock launcher also holds the projector controls and settings, so it
+        // stays on as a second home screen (ours is set as the default); remote pairing, OTA updates, setup, SDK services
+        "com.htc.luminaos", "com.htc.expandsdk", "com.htc.htcbluetoothremotecontrol", "com.htc.htcotaupdate",
+        "com.softwinner.provision", "com.softwinner.settingssetup"));
 
     /** One switch at a time (jobs can overlap: a boot check and a button press). */
     private static final Object RUN = new Object();

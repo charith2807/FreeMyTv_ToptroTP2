@@ -5,6 +5,7 @@ import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.RuntimeShader;
@@ -15,8 +16,8 @@ import android.graphics.Shader;
  * and only redrawn when it moves (advance, up to ~30 times per second); in the frames between steps the GPU just
  * reuses the layer. The glass reads the frosted aurora computed in Frost or, with a recommendation's image as the
  * background, its blurred version (setFrost).
- * If AGSL fails (it shouldn't on Android 13+), it falls back to a gradient and plain translucent glass: the home screen
- * is never left blank.
+ * If AGSL fails (Android 9 to 12), it falls back to a gradient and a lighter glass (tint, sheen and lit rim): the home
+ * screen is never left blank.
  */
 final class Scene {
     final Shaders.Palette palette = new Shaders.Palette();
@@ -28,6 +29,9 @@ final class Scene {
     private final Paint flatFill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint flatRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fallback = new Paint();
+    private final Paint flatSheen = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix flatMatrix = new Matrix();
+    private final RectF flatRect = new RectF();
     private final Recording auroraNode = Recording.create("aurora");
     // The layer is drawn at a quarter size and scaled up: filtered, its soft shapes stay soft instead of stepping.
     private final Paint layerPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
@@ -59,8 +63,8 @@ final class Scene {
         }
         auroraNode.setUseCompositingLayer(true, layerPaint);
         flatRim.setStyle(Paint.Style.STROKE);
-        flatRim.setColor(0x33FFFFFF);
-        flatRim.setStrokeWidth(1.5f);
+        flatRim.setShader(RIM);
+        flatSheen.setShader(SHEEN);
     }
 
     void setSize(int width, int height) {
@@ -253,11 +257,7 @@ final class Scene {
     void glass(Canvas c, RectF r, float radius, int tint, float tintAlpha, int glow, float glowAlpha, float lift, float body, float alpha) {
         if (alpha <= 0.004f) return;
         if (glass == null) {
-            if (body > 0) {
-                flatFill.setColor(Ui.alpha(tint | 0xFF000000, Math.max(0.35f, tintAlpha)));
-                c.drawRoundRect(r, radius, radius, flatFill);
-            }
-            c.drawRoundRect(r, radius, radius, flatRim);
+            flatGlass(c, r, radius, tint, tintAlpha, body, alpha);
             return;
         }
         float hw = r.width() / 2, hh = r.height() / 2, inner = Math.min(hw, hh);
@@ -275,4 +275,35 @@ final class Scene {
         c.drawRect(r.left - 1, r.top - 1, r.right + 1, r.bottom + 1, glassPaint);
         glassPaint.setAlpha(255);
     }
+
+    /**
+     * Glass without shaders: the tint, a sheen over the top half and a rim bright at the top left and bottom right,
+     * like light catching the edge of a pane. The background is already drawn behind it, so it isn't sampled again.
+     */
+    private void flatGlass(Canvas c, RectF r, float radius, int tint, float tintAlpha, float body, float alpha) {
+        if (body > 0) {
+            flatFill.setColor(Ui.alpha(tint | 0xFF000000, Math.max(0.35f, tintAlpha) * alpha));
+            c.drawRoundRect(r, radius, radius, flatFill);
+            flatMatrix.setScale(1, r.height() * 0.55f);
+            flatMatrix.postTranslate(0, r.top);
+            SHEEN.setLocalMatrix(flatMatrix);
+            flatSheen.setAlpha(Math.round(255 * Math.min(1, 0.12f * alpha * body)));
+            c.drawRoundRect(r, radius, radius, flatSheen);
+        }
+        float stroke = Math.max(1.5f, Math.min(3f, Math.min(r.width(), r.height()) * 0.012f));
+        flatRect.set(r);
+        flatRect.inset(stroke / 2, stroke / 2);
+        flatMatrix.setScale(r.width(), r.height());
+        flatMatrix.postTranslate(r.left, r.top);
+        RIM.setLocalMatrix(flatMatrix);
+        flatRim.setStrokeWidth(stroke);
+        flatRim.setAlpha(Math.round(255 * Math.min(1, alpha)));
+        float rr = Math.max(0, radius - stroke / 2);
+        c.drawRoundRect(flatRect, rr, rr, flatRim);
+    }
+
+    /** Made once in a 1 × 1 box and placed with a matrix: no allocation per frame. */
+    private static final LinearGradient SHEEN = new LinearGradient(0, 0, 0, 1, 0xFFFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
+    private static final LinearGradient RIM = new LinearGradient(0, 0, 1, 1, new int[] {0xBFFFFFFF, 0x1AFFFFFF, 0x66FFFFFF},
+            new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP);
 }
