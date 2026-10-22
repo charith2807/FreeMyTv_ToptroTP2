@@ -19,6 +19,8 @@ Open source. Built with Claude Code. One button to undo.
 
 A private copy of [simbasjungles/free-my-tv](https://github.com/simbasjungles/free-my-tv), adapted for the Toptro TP2 projector (Allwinner H713, Android 11, 32-bit ARM, 1 GB RAM, 1280×720 UI, stock "luminaos" launcher). Everything below the original project's sections still applies; this is what's different.
 
+<p align="center"><img src="docs/assets/toptro-tp2-home.jpg" width="880" alt="Free My TV on the Toptro TP2: a mountain wallpaper behind the clock, the weather and a glass shelf with YouTube, Prime Video, Disney+ and Hulu"><br><sub>On the projector: today's wallpaper, the night look and the glass shelf. Top right: Projector, HDMI Inputs, Settings.</sub></p>
+
 **Changes** (branch `toptro-tp2`):
 
 - **Projector controls stay safe.** `com.htc.luminaos` (the stock launcher, which opens keystone, focus and picture settings), the remote pairing, OTA updates and setup apps are on the `PROTECTED` list in [`HomeMode.java`](app/src/io/freemytv/HomeMode.java), so the switch never turns them off. Autofocus runs as its own service (`com.hysd.vafocus`) and isn't on any list.
