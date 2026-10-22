@@ -15,6 +15,39 @@ Open source. Built with Claude Code. One button to undo.
 
 </div>
 
+## This fork: Toptro TP2 projector
+
+A private copy of [simbasjungles/free-my-tv](https://github.com/simbasjungles/free-my-tv), adapted for the Toptro TP2 projector (Allwinner H713, Android 11, 32-bit ARM, 1 GB RAM, 1280×720 UI, stock "luminaos" launcher). Everything below the original project's sections still applies; this is what's different.
+
+**Changes** (branch `toptro-tp2`):
+
+- **Projector controls stay safe.** `com.htc.luminaos` (the stock launcher, which opens keystone, focus and picture settings), the remote pairing, OTA updates and setup apps are on the `PROTECTED` list in [`HomeMode.java`](app/src/io/freemytv/HomeMode.java), so the switch never turns them off. Autofocus runs as its own service (`com.hysd.vafocus`) and isn't on any list.
+- **Debloat:** `com.hotack.screensaversdk` (screensaver SDK, likely ads), `com.htc.eventuploadservice` (telemetry) and `com.htc.hyk_test` (factory test app). *Original* turns them back on.
+- **Projector button.** The first corner button opens the stock launcher (keystone, focus, settings) instead of Live TV, which a projector doesn't have. It appears only when `com.htc.luminaos` is installed.
+- **Android Settings fallback.** This projector's phone-style Settings doesn't answer `android.settings.SETTINGS`; the app now opens `com.android.settings/.Settings` instead of crashing.
+- **Glass on Android 9 to 12.** Without AGSL shaders, the glass is a tint, a sheen over the top half and a rim lit from the top left, all drawn with gradients made once (no allocation per frame). The full Liquid Glass still runs on Android 13+.
+- **Wallpapers.** With no trending picks (no TMDB key), the home screen shows one of five photos from [`app/assets/wallpapers`](app/assets/wallpapers) (1280×720, a different one each day) with the night look, instead of a plain gradient. Decoded at 16 bits per pixel (1.8 MB).
+
+**Measured on the projector** (24 remote presses across the shelf, the corner buttons and the drawer; 3 alternating runs each, `dumpsys gfxinfo`):
+
+| | Janky frames | Median frame | 99th percentile | Memory (PSS) |
+|---|---|---|---|---|
+| Upstream | avg 44% | 13–16 ms | 46–73 ms | 53 MB |
+| This fork | avg 44% | 13–15 ms | 42–53 ms | 60 MB |
+
+The glass and wallpaper cost nothing measurable in smoothness; the extra memory is the wallpaper. The ~44% janky frames are the projector's chip, on both versions.
+
+**Building on a Mac with a recent JDK:** the `d8` in build-tools 34 crashes on Java 27 (`NullPointerException` in R8). Install a newer one and `build.sh` picks it up automatically:
+
+```bash
+sdkmanager "build-tools;36.0.0"
+./build.sh
+adb connect 192.168.1.150:5555
+adb install -r FreeMyTV.apk
+```
+
+Keep `freemytv.keystore` (not in git): updates must be signed with the same key, or Android refuses to install them over the existing app.
+
 ## What you get
 
 - **No ads.** No sponsored rows, banners or autoplaying promos. Not one.
